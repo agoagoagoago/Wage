@@ -62,16 +62,25 @@ export default function HomePage() {
     setCurrentQuery(suggestion.occupation);
     
     try {
-      const wage = wageSearcher.getWageByIndex(suggestion.rowIndex);
-      if (wage) {
-        setResults([wage]);
-      } else {
+      if (showMultiYear) {
+        // For multi-year view, search by occupation name to get all years
         await handleSearch(suggestion.occupation);
+      } else {
+        // For single-year view, use the specific wage entry
+        const wage = wageSearcher.getWageByIndex(suggestion.rowIndex);
+        if (wage) {
+          setResults([wage]);
+          setMultiYearResults([]); // Clear multi-year results
+          trackSearch(suggestion.occupation, true);
+        } else {
+          await handleSearch(suggestion.occupation);
+        }
       }
     } catch (err) {
       console.error('Selection error:', err);
       setError('Failed to load wage data. Please try again.');
       setResults([]);
+      setMultiYearResults([]);
     } finally {
       setIsLoading(false);
     }
