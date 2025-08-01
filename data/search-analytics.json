@@ -1,0 +1,72 @@
+{
+  "engineer": {
+    "count": 2,
+    "firstSearched": "2025-07-31T11:50:18.883Z",
+    "lastSearched": "2025-07-31T11:50:18.906Z"
+  },
+  "accountant": {
+    "count": 2,
+    "firstSearched": "2025-07-31T11:50:53.630Z",
+    "lastSearched": "2025-07-31T11:50:53.652Z"
+  },
+  "electrical engineer": {
+    "count": 2,
+    "firstSearched": "2025-07-31T11:51:19.855Z",
+    "lastSearched": "2025-07-31T11:51:19.892Z"
+  },
+  "building architect": {
+    "count": 1,
+    "firstSearched": "2025-07-31T11:54:36.477Z",
+    "lastSearched": "2025-07-31T11:54:36.477Z"
+  },
+  "architect": {
+    "count": 2,
+    "firstSearched": "2025-07-31T11:55:03.062Z",
+    "lastSearched": "2025-07-31T11:55:03.076Z"
+  },
+  "doctor": {
+    "count": 2,
+    "firstSearched": "2025-07-31T15:03:09.030Z",
+    "lastSearched": "2025-07-31T15:03:09.045Z"
+  },
+  "building painter": {
+    "count": 1,
+    "firstSearched": "2025-07-31T15:03:41.083Z",
+    "lastSearched": "2025-07-31T15:03:41.083Z"
+  },
+  "port shipping operations manager": {
+    "count": 1,
+    "firstSearched": "2025-07-31T15:24:05.078Z",
+    "lastSearched": "2025-07-31T15:24:05.078Z"
+  },
+  "bookmaker croupier casino dealer and related gaming worker": {
+    "count": 1,
+    "firstSearched": "2025-07-31T15:39:35.536Z",
+    "lastSearched": "2025-07-31T15:39:35.536Z"
+  },
+  "lift technician": {
+    "count": 1,
+    "firstSearched": "2025-07-31T15:59:23.975Z",
+    "lastSearched": "2025-07-31T15:59:23.975Z"
+  },
+  "nurse": {
+    "count": 2,
+    "firstSearched": "2025-07-31T16:41:47.643Z",
+    "lastSearched": "2025-07-31T16:41:47.723Z"
+  },
+  "database architect": {
+    "count": 1,
+    "firstSearched": "2025-07-31T16:42:50.203Z",
+    "lastSearched": "2025-07-31T16:42:50.203Z"
+  },
+  "landscape architect": {
+    "count": 1,
+    "firstSearched": "2025-07-31T16:46:07.739Z",
+    "lastSearched": "2025-07-31T16:46:07.739Z"
+  },
+  "executive search consultant": {
+    "count": 1,
+    "firstSearched": "2025-07-31T16:46:35.506Z",
+    "lastSearched": "2025-07-31T16:46:35.506Z"
+  }
+}
