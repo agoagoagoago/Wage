@@ -1,5 +1,5 @@
 import Fuse from 'fuse.js';
-import type { WageRow, SearchIndex, SearchResult, SearchSuggestion } from './types';
+import type { WageRow, SearchIndex, SearchResult, SearchSuggestion, MultiYearWageData, WageGrowthStats, WageTrendPoint } from './types';
 
 export class WageSearcher {
   private wages: WageRow[] = [];
@@ -150,6 +150,112 @@ export class WageSearcher {
       return this.wages[index];
     }
     return null;
+  }
+
+  async searchMultiYear(query: string, limit: number = 10): Promise<MultiYearWageData[]> {
+    await this.loadData();
+    
+    if (!this.fuse || !query.trim()) {
+      return [];
+    }
+
+    // Get search results
+    const searchResults = await this.search(query, limit * 4); // Get more results to account for multiple years
+    
+    // Group by occupation
+    const occupationMap = new Map<string, MultiYearWageData>();
+    
+    searchResults.forEach(result => {
+      const wage = result.item;
+      const normalizedOccupation = wage.occupation.toLowerCase().trim();
+      
+      if (!occupationMap.has(normalizedOccupation)) {
+        occupationMap.set(normalizedOccupation, {
+          occupation: wage.occupation,
+          group: wage.group,
+          yearlyData: []
+        });
+      }
+      
+      const multiYearData = occupationMap.get(normalizedOccupation)!;
+      multiYearData.yearlyData.push({
+        year: wage.year,
+        stats: wage.stats,
+        source: wage.source
+      });
+    });
+    
+    // Sort yearly data by year and limit results
+    const results = Array.from(occupationMap.values())
+      .map(data => ({
+        ...data,
+        yearlyData: data.yearlyData.sort((a, b) => a.year - b.year)
+      }))
+      .slice(0, limit);
+    
+    return results;
+  }
+
+  calculateWageGrowth(yearlyData: MultiYearWageData['yearlyData']): WageGrowthStats | null {
+    if (yearlyData.length < 2) return null;
+    
+    const medianWages = yearlyData
+      .map(data => ({
+        year: data.year,
+        wage: data.stats['Median  ($)'] || data.stats['Median ($)'] || null
+      }))
+      .filter(item => item.wage !== null)
+      .sort((a, b) => a.year - b.year);
+    
+    if (medianWages.length < 2) return null;
+    
+    const firstWage = medianWages[0].wage!;
+    const lastWage = medianWages[medianWages.length - 1].wage!;
+    const totalChange = lastWage - firstWage;
+    const totalChangePercent = (totalChange / firstWage) * 100;
+    const years = medianWages[medianWages.length - 1].year - medianWages[0].year;
+    const averageAnnualGrowth = years > 0 ? (Math.pow(lastWage / firstWage, 1 / years) - 1) * 100 : 0;
+    
+    // Find best and worst performing years
+    let bestYear = medianWages[0].year;
+    let worstYear = medianWages[0].year;
+    let maxIncrease = 0;
+    let maxDecrease = 0;
+    
+    for (let i = 1; i < medianWages.length; i++) {
+      const prevWage = medianWages[i - 1].wage!;
+      const currentWage = medianWages[i].wage!;
+      const change = currentWage - prevWage;
+      
+      if (change > maxIncrease) {
+        maxIncrease = change;
+        bestYear = medianWages[i].year;
+      }
+      if (change < maxDecrease) {
+        maxDecrease = change;
+        worstYear = medianWages[i].year;
+      }
+    }
+    
+    return {
+      totalChange,
+      totalChangePercent,
+      averageAnnualGrowth,
+      bestYear,
+      worstYear
+    };
+  }
+
+  getWageTrendData(yearlyData: MultiYearWageData['yearlyData']): WageTrendPoint[] {
+    return yearlyData
+      .map(data => ({
+        year: data.year,
+        wage: data.stats['Median  ($)'] || data.stats['Median ($)'] || null,
+        formattedWage: data.stats['Median  ($)'] || data.stats['Median ($)'] 
+          ? `$${(data.stats['Median  ($)'] || data.stats['Median ($)'])?.toLocaleString()}` 
+          : 'N/A'
+      }))
+      .sort((a, b) => a.year - b.year);
   }
 
   async exportToCsv(wageRows: WageRow[]): Promise<string> {

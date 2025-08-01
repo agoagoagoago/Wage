@@ -4,10 +4,17 @@ import * as path from 'path';
 import type { WageRow, SearchIndex, ExcelWorksheet } from '../lib/types';
 
 const WAGE_TOKENS = ['gross', 'wage', 'income', 'median', 'p25', 'p75', 'mean', 'monthly', 'hourly'];
-const EXCEL_PATH = path.join(process.cwd(), 'data', 'Median Wage 2024.xlsx');
+const DATA_DIR = path.join(process.cwd(), 'data');
 const OUTPUT_DIR = path.join(process.cwd(), 'public', 'data');
 const WAGES_OUTPUT = path.join(OUTPUT_DIR, 'wages.json');
 const INDEX_OUTPUT = path.join(OUTPUT_DIR, 'index.json');
+
+// Years to process
+const YEARS = [2021, 2022, 2023, 2024];
+
+function getExcelPath(year: number): string {
+  return path.join(DATA_DIR, `Median Wage ${year}.xlsx`);
+}
 
 function ensureOutputDir() {
   if (!fs.existsSync(OUTPUT_DIR)) {
@@ -127,14 +134,16 @@ function generateSynonyms(): Record<string, string[]> {
   };
 }
 
-async function processExcelFile(): Promise<{ wages: WageRow[]; index: SearchIndex[] }> {
-  console.log('Reading Excel file:', EXCEL_PATH);
+async function processExcelFile(year: number): Promise<WageRow[]> {
+  const excelPath = getExcelPath(year);
+  console.log(`Reading Excel file for ${year}:`, excelPath);
   
-  if (!fs.existsSync(EXCEL_PATH)) {
-    throw new Error(`Excel file not found: ${EXCEL_PATH}`);
+  if (!fs.existsSync(excelPath)) {
+    console.warn(`Excel file not found: ${excelPath}`);
+    return [];
   }
   
-  const workbook = XLSX.readFile(EXCEL_PATH);
+  const workbook = XLSX.readFile(excelPath);
   const wages: WageRow[] = [];
   const occupationMap = new Map<string, WageRow>();
   
@@ -213,46 +222,72 @@ async function processExcelFile(): Promise<{ wages: WageRow[]; index: SearchInde
           occupationMap.set(normalizedOccupation, {
             occupation,
             stats,
-            source: { sheet: sheetName, row: row + 1 }
+            source: { sheet: sheetName, row: row + 1 },
+            year
           });
         }
       } else {
         occupationMap.set(normalizedOccupation, {
           occupation,
           stats,
-          source: { sheet: sheetName, row: row + 1 }
+          source: { sheet: sheetName, row: row + 1 },
+          year
         });
       }
     }
   }
   
   const wagesArray = Array.from(occupationMap.values());
-  console.log(`Processed ${wagesArray.length} unique occupations`);
+  console.log(`Processed ${wagesArray.length} unique occupations for ${year}`);
   
-  const index: SearchIndex[] = wagesArray.map((wage, index) => ({
+  return wagesArray;
+}
+
+async function processAllYears(): Promise<{ wages: WageRow[]; index: SearchIndex[] }> {
+  const allWages: WageRow[] = [];
+  
+  for (const year of YEARS) {
+    console.log(`\n🔄 Processing year ${year}...`);
+    const yearWages = await processExcelFile(year);
+    allWages.push(...yearWages);
+  }
+  
+  console.log(`\n📊 Combined ${allWages.length} wage records across all years`);
+  
+  // Create search index
+  const index: SearchIndex[] = allWages.map((wage, index) => ({
     occupation: wage.occupation,
     tokens: generateTokens(wage.occupation),
     rowIndex: index
   }));
   
-  return { wages: wagesArray, index };
+  return { wages: allWages, index };
 }
 
 async function main() {
   try {
-    console.log('Starting Excel ingestion...');
+    console.log('Starting multi-year Excel ingestion...');
+    console.log(`Processing years: ${YEARS.join(', ')}`);
     ensureOutputDir();
     
-    const { wages, index } = await processExcelFile();
+    const { wages, index } = await processAllYears();
     
-    console.log('Writing output files...');
+    console.log('\n📝 Writing output files...');
     fs.writeFileSync(WAGES_OUTPUT, JSON.stringify(wages, null, 2));
     fs.writeFileSync(INDEX_OUTPUT, JSON.stringify(index, null, 2));
     
-    console.log(`✅ Successfully processed ${wages.length} wage records`);
+    console.log(`\n✅ Successfully processed ${wages.length} total wage records`);
     console.log(`📁 Output files:`);
     console.log(`   - ${WAGES_OUTPUT}`);
     console.log(`   - ${INDEX_OUTPUT}`);
+    
+    // Show year distribution
+    const yearCounts = YEARS.map(year => {
+      const count = wages.filter(w => w.year === year).length;
+      return `${year}: ${count} records`;
+    });
+    console.log(`\n📈 Year distribution:`);
+    yearCounts.forEach(count => console.log(`   - ${count}`));
     
   } catch (error) {
     console.error('❌ Error during ingestion:', error);

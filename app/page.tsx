@@ -3,17 +3,20 @@
 import React, { useState } from 'react';
 import SearchBox from '@/components/SearchBox';
 import Results from '@/components/Results';
+import MultiYearResults from '@/components/MultiYearResults';
 import MostSearched from '@/components/MostSearched';
 import RecentSearches from '@/components/RecentSearches';
 import { wageSearcher } from '@/lib/search';
 import { useSearchAnalytics } from '@/lib/useSearchAnalytics';
-import type { WageRow, SearchSuggestion } from '@/lib/types';
+import type { WageRow, SearchSuggestion, MultiYearWageData } from '@/lib/types';
 
 export default function HomePage() {
   const [results, setResults] = useState<WageRow[]>([]);
+  const [multiYearResults, setMultiYearResults] = useState<MultiYearWageData[]>([]);
   const [currentQuery, setCurrentQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showMultiYear, setShowMultiYear] = useState(true); // Default to multi-year view
   const { trackSearch } = useSearchAnalytics();
 
   const handleSearch = async (query: string) => {
@@ -24,16 +27,27 @@ export default function HomePage() {
     setCurrentQuery(query);
     
     try {
-      const searchResults = await wageSearcher.search(query, 10);
-      const resultItems = searchResults.map(r => r.item);
-      setResults(resultItems);
-      
-      // Track search with accurate result status
-      trackSearch(query, resultItems.length > 0);
+      if (showMultiYear) {
+        const multiYearSearchResults = await wageSearcher.searchMultiYear(query, 10);
+        setMultiYearResults(multiYearSearchResults);
+        setResults([]); // Clear single-year results
+        
+        // Track search with accurate result status
+        trackSearch(query, multiYearSearchResults.length > 0);
+      } else {
+        const searchResults = await wageSearcher.search(query, 10);
+        const resultItems = searchResults.map(r => r.item);
+        setResults(resultItems);
+        setMultiYearResults([]); // Clear multi-year results
+        
+        // Track search with accurate result status
+        trackSearch(query, resultItems.length > 0);
+      }
     } catch (err) {
       console.error('Search error:', err);
       setError('Failed to search. Please try again.');
       setResults([]);
+      setMultiYearResults([]);
       
       // Track failed search
       trackSearch(query, false);
@@ -87,14 +101,14 @@ export default function HomePage() {
             </div>
           </div>
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto mb-6">
-            Find median gross wage for Singapore occupations. Search by job title for instant salary information.
+            Find median gross wage trends for Singapore occupations from 2021-2024. Search by job title for instant salary insights with historical analysis.
           </p>
           <div className="text-sm text-gray-500 dark:text-gray-400 max-w-3xl mx-auto">
             <p className="mb-2">
-              <strong>🇸🇬 Singapore occupations</strong> • <strong>📊 Official MOM data</strong> • <strong>💯 100% Free</strong>
+              <strong>🇸🇬 Singapore occupations</strong> • <strong>📊 4-Year Wage Trends</strong> • <strong>📈 Interactive Charts</strong> • <strong>💯 100% Free</strong>
             </p>
             <p>
-              Get instant access to median gross wage data for Software Engineers, Nurses, Teachers, Managers, and hundreds more occupations in Singapore.
+              Get instant access to median gross wage data and growth trends for Software Engineers, Nurses, Teachers, Managers, and hundreds more occupations in Singapore. See how salaries have changed from 2021 to 2024.
             </p>
           </div>
         </header>
@@ -109,6 +123,32 @@ export default function HomePage() {
                 onSelect={handleSuggestionSelect}
                 placeholder="Type an occupation, e.g., 'nurse', 'software engineer'"
               />
+              
+              {/* View Toggle */}
+              <div className="flex justify-center mt-4">
+                <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-1 flex">
+                  <button
+                    onClick={() => setShowMultiYear(true)}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      showMultiYear
+                        ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    📈 Multi-Year Trends (2021-2024)
+                  </button>
+                  <button
+                    onClick={() => setShowMultiYear(false)}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      !showMultiYear
+                        ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    📊 Current Year Only
+                  </button>
+                </div>
+              </div>
             </div>
 
         {error && (
@@ -131,10 +171,17 @@ export default function HomePage() {
           </div>
         )}
 
-            <Results
-              results={results}
-              query={currentQuery}
-            />
+            {showMultiYear ? (
+              <MultiYearResults
+                results={multiYearResults}
+                query={currentQuery}
+              />
+            ) : (
+              <Results
+                results={results}
+                query={currentQuery}
+              />
+            )}
 
             {/* Recent Searches Section */}
             <div className="mt-12">
@@ -160,9 +207,9 @@ export default function HomePage() {
                   🏆 Singapore's #1 Wage Lookup Tool
                 </h3>
                 <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
-                  <li>📊 <strong>Official MOM Data:</strong> Singapore Manpower Ministry 2024 statistics</li>
-                  <li>🎯 <strong>Most Comprehensive:</strong> Different Singapore occupations</li>
-                  <li>⚡ <strong>Always Current:</strong> Latest 2024 wage data and salary trends</li>
+                  <li>📊 <strong>Official MOM Data:</strong> Singapore Manpower Ministry 2021-2024 statistics</li>
+                  <li>🎯 <strong>Most Comprehensive:</strong> Historical trends across different Singapore occupations</li>
+                  <li>⚡ <strong>Multi-Year Analysis:</strong> 4-year wage trends with growth analysis</li>
                   <li>💯 <strong>100% Free:</strong> No registration or hidden costs</li>
                   <li>🚀 <strong>Lightning Fast:</strong> Instant search results with smart suggestions</li>
                   <li>📱 <strong>Mobile Optimized:</strong> Perfect on desktop, tablet, and mobile</li>
