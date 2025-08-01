@@ -125,13 +125,45 @@ export class WageSearcher {
       return [];
     }
 
-    const results = await this.search(query, limit);
+    // Get more results to account for multiple years, then deduplicate
+    const results = await this.search(query, limit * 4);
     
-    return results.map(result => ({
-      occupation: result.item.occupation,
-      score: result.score,
-      rowIndex: this.wages.indexOf(result.item)
-    }));
+    // Group by normalized occupation name to remove duplicates
+    const occupationMap = new Map<string, { bestResult: SearchResult; rowIndex: number }>();
+    
+    results.forEach(result => {
+      const normalizedOccupation = result.item.occupation
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      
+      const currentRowIndex = this.wages.indexOf(result.item);
+      
+      if (!occupationMap.has(normalizedOccupation) || 
+          result.score < occupationMap.get(normalizedOccupation)!.bestResult.score) {
+        // Keep the result with the best (lowest) score, or prioritize most recent year if scores are equal
+        const existing = occupationMap.get(normalizedOccupation);
+        if (!existing || result.score < existing.bestResult.score || 
+            (result.score === existing.bestResult.score && result.item.year > existing.bestResult.item.year)) {
+          occupationMap.set(normalizedOccupation, {
+            bestResult: result,
+            rowIndex: currentRowIndex
+          });
+        }
+      }
+    });
+    
+    // Convert back to SearchSuggestion array and sort by score
+    return Array.from(occupationMap.values())
+      .sort((a, b) => a.bestResult.score - b.bestResult.score)
+      .slice(0, limit)
+      .map(({ bestResult, rowIndex }) => ({
+        occupation: bestResult.item.occupation,
+        score: bestResult.score,
+        rowIndex
+      }));
   }
 
   async findExact(occupation: string): Promise<WageRow | null> {
