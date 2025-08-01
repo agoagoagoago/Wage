@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 const ANALYTICS_FILE = path.join(process.cwd(), 'data', 'search-analytics.json');
+const RECENT_SEARCHES_FILE = path.join(process.cwd(), 'data', 'recent-searches.json');
 
 interface SearchAnalytics {
   [query: string]: {
@@ -18,8 +19,30 @@ interface RecentSearch {
   hasResults: boolean;
 }
 
-// Store recent searches in memory (you might want to persist this too)
-let recentSearches: RecentSearch[] = [];
+// Load recent searches from file
+function loadRecentSearches(): RecentSearch[] {
+  try {
+    if (fs.existsSync(RECENT_SEARCHES_FILE)) {
+      const data = fs.readFileSync(RECENT_SEARCHES_FILE, 'utf-8');
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error('Error loading recent searches:', error);
+  }
+  return [];
+}
+
+// Save recent searches to file
+function saveRecentSearches(searches: RecentSearch[]): void {
+  try {
+    if (!fs.existsSync(path.dirname(RECENT_SEARCHES_FILE))) {
+      fs.mkdirSync(path.dirname(RECENT_SEARCHES_FILE), { recursive: true });
+    }
+    fs.writeFileSync(RECENT_SEARCHES_FILE, JSON.stringify(searches, null, 2));
+  } catch (error) {
+    console.error('Error saving recent searches:', error);
+  }
+}
 
 function ensureAnalyticsFile(): SearchAnalytics {
   try {
@@ -96,8 +119,10 @@ export async function POST(request: NextRequest) {
       hasResults
     };
 
+    let recentSearches = loadRecentSearches();
     recentSearches.unshift(recentSearch); // Add to beginning
     recentSearches = recentSearches.slice(0, 50); // Keep only last 50 searches
+    saveRecentSearches(recentSearches);
 
     // Track in Google Analytics if available
     if (process.env.NEXT_PUBLIC_GA_ID) {
@@ -127,6 +152,7 @@ export async function GET(request: NextRequest) {
     if (type === 'recent') {
       // Return recent searches
       const recentLimit = Math.min(limit, 20);
+      const recentSearches = loadRecentSearches();
       return NextResponse.json({
         recentSearches: recentSearches.slice(0, recentLimit)
       });
@@ -149,7 +175,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       topSearches,
-      recentSearches: recentSearches.slice(0, 10), // Include recent searches in main response
+      recentSearches: loadRecentSearches().slice(0, 10), // Include recent searches in main response
       stats: {
         totalQueries,
         totalSearches,

@@ -136,13 +136,13 @@ export default function HomePage() {
               query={currentQuery}
             />
 
-            {/* Recent Searches Section - Disabled for static export */}
-            {/* <div className="mt-12">
+            {/* Recent Searches Section */}
+            <div className="mt-12">
               <RecentSearches 
                 limit={10}
                 className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700"
               />
-            </div> */}
+            </div>
 
           </main>
         </div>
