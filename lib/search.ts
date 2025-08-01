@@ -188,11 +188,13 @@ export class WageSearcher {
     await this.loadData();
     
     if (!this.fuse || !query.trim()) {
+      console.log('MultiYear search: No fuse or empty query');
       return [];
     }
 
     // Get search results - increase limit to ensure we get all years for each occupation
     const searchResults = await this.search(query, limit * 8); // Get more results to account for multiple years
+    console.log(`MultiYear search for "${query}": Basic search found ${searchResults.length} results`);
     
     // Group by occupation with more flexible matching
     const occupationMap = new Map<string, MultiYearWageData>();
@@ -239,7 +241,7 @@ export class WageSearcher {
       })
       .slice(0, limit);
     
-    console.log(`Multi-year search for "${query}": Found ${results.length} occupations`);
+    console.log(`MultiYear search for "${query}": Final results: ${results.length} occupations`);
     results.forEach(result => {
       console.log(`- ${result.occupation}: ${result.yearlyData.length} years (${result.yearlyData.map(d => d.year).join(', ')})`);
     });
