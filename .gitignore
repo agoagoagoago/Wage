@@ -44,3 +44,6 @@ next-env.d.ts
 # Commented out for Render deployment - we need these files in the repo
 # /public/data/wages.json
 # /public/data/index.json
+
+# deprecated folders
+/static/
