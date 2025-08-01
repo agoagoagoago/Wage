@@ -159,19 +159,25 @@ export class WageSearcher {
       return [];
     }
 
-    // Get search results
-    const searchResults = await this.search(query, limit * 4); // Get more results to account for multiple years
+    // Get search results - increase limit to ensure we get all years for each occupation
+    const searchResults = await this.search(query, limit * 8); // Get more results to account for multiple years
     
-    // Group by occupation
+    // Group by occupation with more flexible matching
     const occupationMap = new Map<string, MultiYearWageData>();
     
     searchResults.forEach(result => {
       const wage = result.item;
-      const normalizedOccupation = wage.occupation.toLowerCase().trim();
+      // More aggressive normalization for grouping
+      const normalizedOccupation = wage.occupation
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s]/g, ' ') // Remove punctuation
+        .replace(/\s+/g, ' ') // Normalize spaces
+        .trim();
       
       if (!occupationMap.has(normalizedOccupation)) {
         occupationMap.set(normalizedOccupation, {
-          occupation: wage.occupation,
+          occupation: wage.occupation, // Keep original occupation name for display
           group: wage.group,
           yearlyData: []
         });
@@ -191,7 +197,20 @@ export class WageSearcher {
         ...data,
         yearlyData: data.yearlyData.sort((a, b) => a.year - b.year)
       }))
+      .sort((a, b) => {
+        // Prioritize occupations with more years of data
+        if (a.yearlyData.length !== b.yearlyData.length) {
+          return b.yearlyData.length - a.yearlyData.length;
+        }
+        // Then sort by occupation name
+        return a.occupation.localeCompare(b.occupation);
+      })
       .slice(0, limit);
+    
+    console.log(`Multi-year search for "${query}": Found ${results.length} occupations`);
+    results.forEach(result => {
+      console.log(`- ${result.occupation}: ${result.yearlyData.length} years (${result.yearlyData.map(d => d.year).join(', ')})`);
+    });
     
     return results;
   }
